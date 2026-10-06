@@ -1,0 +1,11 @@
+__MACOSX/
+__pycache__/
+*.pyc
+*Zone.Identifier
+._*
+*~
+build/
+install/
+log/
+model_editor_models/
+screenshots/
