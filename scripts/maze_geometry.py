@@ -152,7 +152,9 @@ def walk(node, px, py, pyaw, state, out, search_dirs, unresolved, depth=0):
                 continue
             m = root.find('model')
             if m is None:
-                unresolved.append(('%s (no <model> in %s)' % (uri, path), wx, wy))
+                # sun 的 model.sdf 只有 <light>，没有几何，不算错误
+                if uri.rstrip('/').rsplit('/', 1)[-1] not in ('ground_plane', 'sun'):
+                    unresolved.append(('%s (no <model> in %s)' % (uri, path), wx, wy))
                 continue
             mv = parse_pose(m.find('pose'))
             wx2, wy2, wyaw2 = compose(wx, wy, wyaw, mv)
