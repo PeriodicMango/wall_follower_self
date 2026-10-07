@@ -94,6 +94,8 @@ def replay(path):
     scans, odoms, cmds = [], [], []
     t0 = None
     pairs = {}
+    cur_b = None
+    cmd_by_branch = {b: 0 for b in range(1, 7)}
 
     while reader.has_next():
         topic, data, t = reader.read_next()
@@ -103,7 +105,9 @@ def replay(path):
             m = deserialize_message(data, LaserScan)
             r = m.ranges
             F, FL, LF, FR = min_in_arc(r, 0), min_in_arc(r, 30), min_in_arc(r, 60), min_in_arc(r, 330)
-            scans.append((t, stamp_sec(m), classify(F, FL, LF, FR), min(F, FL, LF, FR)))
+            b = classify(F, FL, LF, FR)
+            cur_b = b
+            scans.append((t, stamp_sec(m), b, min(F, FL, LF, FR)))
         elif topic.endswith('/odom'):
             o = deserialize_message(data, Odometry)
             p = o.pose.pose.position
@@ -113,6 +117,8 @@ def replay(path):
             cmds.append((t, tw.linear.x, tw.angular.z))
             k = '(%.2f,%+.2f)' % (tw.linear.x, tw.angular.z)
             pairs[k] = pairs.get(k, 0) + 1
+            if cur_b is not None:
+                cmd_by_branch[cur_b] += 1
 
     if not scans:
         print('=== %s\n  没有 /scan，无法分析\n' % path)
@@ -214,6 +220,19 @@ def replay(path):
         print('  最长连续段（窗口内）: 分支%d 持续 %.1f s 墙钟（%.0f%% 的窗口，%d 帧，起于窗口内 %.1fs）'
               % (champ, cs['run_max'], 100.0 * cs['run_max'] / max(win, 1e-9),
                  cs['run_max_frames'], cs['run_max_at'] or 0.0))
+    # 自检: 各分支的指令条数应与时间占比同比例；不一致就是有第二个发布者
+    tot_cmd = sum(cmd_by_branch.values()) or 1
+    print()
+    print('  各分支的指令条数: %s'
+          % '  '.join('%d:%d' % (b, cmd_by_branch[b]) for b in range(1, 7)
+                      if cmd_by_branch[b] > 0))
+    db = max(range(1, 7), key=lambda b: cmd_by_branch[b])
+    if cmd_by_branch[db] > 0:
+        msg_pct = 100.0 * cmd_by_branch[db] / tot_cmd
+        time_pct = 100.0 * st[db]['time'] / tot_time
+        flag = '  【可疑：疑似有第二个 cmd_vel 发布者】' if abs(msg_pct - time_pct) > 15 else ''
+        print('  自检: 指令最多的分支 %d 占 %.1f%% 消息，而它占 %.1f%% 时间（相差 %.0f pt）%s'
+              % (db, msg_pct, time_pct, msg_pct - time_pct, flag))
     print()
     if wc:
         vs = [c[1] for c in wc]
