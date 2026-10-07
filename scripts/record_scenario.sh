@@ -5,13 +5,17 @@
 #                          并且 policy_probe.py 已确认命中预期分支。
 #
 # 用法:
-#   ./record_scenario.sh S2          # 默认 60 秒
-#   ./record_scenario.sh S2 90
+#   ./record_scenario.sh S1            # 默认 60 秒，自动取下一个空闲的 _runN
+#   ./record_scenario.sh S1 90         # 跑 90 秒
+#   ./record_scenario.sh S1 60 2       # 强制用 _run2（已存在则拒绝）
+#
+# run 号规则: 从 1 开始找第一个不存在的 <场景名>_run<N>，所以同一个场景
+#             连跑两次会依次落到 _run1、_run2，不需要手动改名字。
 #
 # 产物:
-#   ~/bags/sim/<场景名>_run1/         bag
-#   /tmp/wf_<场景名>_run1.log         控制器 stdout
-#   /tmp/bagrec_<场景名>.log          录包器 stdout
+#   ~/bags/sim/<场景名>_run<N>/        bag
+#   /tmp/wf_<场景名>_run<N>.log        控制器 stdout
+#   /tmp/bagrec_<场景名>_run<N>.log    录包器 stdout
 #
 # 为什么要按进程名清残留: `kill -9` 杀的是 ros2 run 的 python 包装进程，
 # 真正的节点是它的子进程，SIGKILL 不传递 —— 不清就会出现「幽灵控制器」
@@ -20,14 +24,26 @@ set -uo pipefail
 
 NAME="${1:-}"
 DUR="${2:-60}"
+FORCE_RUN="${3:-}"
+
 if [ -z "$NAME" ]; then
-  echo "用法: $0 <场景名> [秒数]        例: $0 S2 60" >&2
+  echo "用法: $0 <场景名> [秒数] [run号]     例: $0 S1 60" >&2
   exit 1
 fi
 
-BAG="$HOME/bags/sim/${NAME}_run1"
-LOG="/tmp/wf_${NAME}_run1.log"
-BAGLOG="/tmp/bagrec_${NAME}.log"
+BASE="${NAME%_run*}"          # 允许误传 S1_run2，统一收回 S1
+if [ -n "$FORCE_RUN" ]; then
+  N="$FORCE_RUN"
+else
+  N=1
+  while [ -e "$HOME/bags/sim/${BASE}_run${N}" ]; do
+    N=$((N + 1))
+  done
+fi
+
+BAG="$HOME/bags/sim/${BASE}_run${N}"
+LOG="/tmp/wf_${BASE}_run${N}.log"
+BAGLOG="/tmp/bagrec_${BASE}_run${N}.log"
 
 CTRL='wall_follower/wall_follower'     # 真正的节点进程
 WRAP='ros2 run wall_follower'          # ros2 run 包装进程
@@ -46,9 +62,13 @@ kill_ctrl() {
 # ---- 前置检查 ----------------------------------------------------------
 if [ -e "$BAG" ]; then
   echo "目标已存在: $BAG" >&2
-  echo "先改名或删除:  mv $BAG ${BAG}_old   或   rm -rf $BAG" >&2
+  echo "（只在显式指定 run 号时会出现）改名或删除后重试" >&2
   exit 1
 fi
+
+echo "场景 ${BASE}   使用 run${N}"
+echo "  bag  -> $BAG"
+echo "  日志 -> $LOG"
 
 left=$(n_ctrl)
 if [ "$left" -gt 0 ]; then
@@ -110,4 +130,4 @@ echo "=== 控制器日志（预期只有 near_start 一行，或为空）==="
 cat "$LOG" 2>/dev/null
 echo
 echo "下一步:"
-echo "  python3 scripts/policy_replay.py $BAG | tee ~/bags/replay_${NAME}_run1.txt"
+echo "  python3 scripts/policy_replay.py $BAG | tee ~/bags/replay_${BASE}_run${N}.txt"
