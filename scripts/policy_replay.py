@@ -130,8 +130,8 @@ def replay(path):
     else:
         w0, w1 = t0, scans[-1][0]
     win = (w1 - w0) / NS
-    pre = (w0 - t0) / NS
-    post = (scans[-1][0] - w1) / NS
+    pre = max(0.0, (w0 - t0) / NS)
+    post = max(0.0, (scans[-1][0] - w1) / NS)
 
     ws = [s for s in scans if w0 <= s[0] <= w1]
     wo = [o for o in odoms if w0 <= o[0] <= w1]
@@ -226,13 +226,20 @@ def replay(path):
     print('  各分支的指令条数: %s'
           % '  '.join('%d:%d' % (b, cmd_by_branch[b]) for b in range(1, 7)
                       if cmd_by_branch[b] > 0))
-    db = max(range(1, 7), key=lambda b: cmd_by_branch[b])
-    if cmd_by_branch[db] > 0:
-        msg_pct = 100.0 * cmd_by_branch[db] / tot_cmd
-        time_pct = 100.0 * st[db]['time'] / tot_time
-        flag = '  【可疑：疑似有第二个 cmd_vel 发布者】' if abs(msg_pct - time_pct) > 15 else ''
-        print('  自检: 指令最多的分支 %d 占 %.1f%% 消息，而它占 %.1f%% 时间（相差 %.0f pt）%s'
-              % (db, msg_pct, time_pct, msg_pct - time_pct, flag))
+    deltas = []
+    for b in range(1, 7):
+        if cmd_by_branch[b] > 0 and st[b]['frames'] > 0:
+            mp = 100.0 * cmd_by_branch[b] / tot_cmd
+            tp = 100.0 * st[b]['time'] / tot_time
+            deltas.append((abs(mp - tp), b, mp, tp))
+    if deltas:
+        worst = max(deltas)
+        flag = '  【可疑：疑似有第二个 cmd_vel 发布者】' if worst[0] > 15 else ''
+        print('  自检: 逐分支指令占比 vs 时间占比，最大偏差 %.0f pt（分支%d: %.1f%% vs %.1f%%）%s'
+              % (worst[0], worst[1], worst[2], worst[3], flag))
+        print('        各分支偏差(pt): %s'
+              % '  '.join('%d:%+.0f' % (b, mp - tp)
+                          for _, b, mp, tp in sorted(deltas, key=lambda t: t[1])))
     print()
     if wc:
         vs = [c[1] for c in wc]
