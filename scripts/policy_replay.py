@@ -125,7 +125,15 @@ def replay(path):
         return
     rec_span = (scans[-1][0] - t0) / NS
 
-    if cmds:
+    # 控制窗口 = [首条非零速度指令, 末条非零速度指令]
+    # 不能用「首末条 cmd_vel」: 场景脚本结束时自己会发一条零速停车命令,
+    # near_start 触发时控制器也会先发一条 (0,0) 再退出 —— 两者都会把
+    # 「控制器已经没在跑」的静止时段拉进窗口，而静止的机器人会被扫成
+    # 某个静态分支（已踩过三次）。
+    nz = [c for c in cmds if abs(c[1]) > 1e-9 or abs(c[2]) > 1e-9]
+    if nz:
+        w0, w1 = nz[0][0], nz[-1][0]
+    elif cmds:
         w0, w1 = cmds[0][0], cmds[-1][0]
     else:
         w0, w1 = t0, scans[-1][0]
@@ -202,7 +210,8 @@ def replay(path):
     print('=== %s' % path)
     print('  记录总跨度 %.1f s   控制窗口 %.1f s（窗口外: 前 %.1f s + 后 %.1f s，控制器未运行）'
           % (rec_span, win, pre, post))
-    print('  窗口内扫描帧数 %d   实时因子 RTF %.2f（sim 时间 / 墙钟）' % (len(ws), rtf))
+    print('  窗口内扫描帧数 %d   实时因子 RTF %.2f（sim 时间 / 墙钟）  零速指令 %d 条（已排除在窗口外）'
+          % (len(ws), rtf, len(cmds) - len(nz)))
     print()
     print('  分支  指令              帧数  帧占比   累计时间  时间占比  进入次数  最长连续')
     for b in range(1, 7):
