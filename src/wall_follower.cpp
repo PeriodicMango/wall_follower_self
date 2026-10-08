@@ -373,7 +373,7 @@ void WallFollower::scan_callback(
 	)
 	{
 		if (
-			msg->ranges.at(angle) > 0.1 &&
+			msg->ranges.at(angle) > msg->range_min &&
 			msg->ranges.at(angle) < closest
 		)
 		{
@@ -390,7 +390,7 @@ void WallFollower::scan_callback(
 	)
 	{
 		if (
-			msg->ranges.at(angle) > 0.1 &&
+			msg->ranges.at(angle) > msg->range_min &&
 			msg->ranges.at(angle) < closest
 		)
 		{
@@ -424,7 +424,7 @@ void WallFollower::scan_callback(
 		)
 		{
 			if (
-				msg->ranges.at(angle) > 0.1 &&
+				msg->ranges.at(angle) > msg->range_min &&
 				msg->ranges.at(angle) < closest
 			)
 			{
