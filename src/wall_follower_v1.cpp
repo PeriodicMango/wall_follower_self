@@ -118,7 +118,7 @@ void WallFollower::odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg)
 	}
 	else if (fabs(current_x - start_x) < START_RANGE && fabs(current_y - start_y) < START_RANGE)
 	{
-		fprintf(stderr, "Near start!!\n");
+		RCLCPP_INFO(this->get_logger(), "Near start!!");
 		near_start = true;
 		first = true;
 		start_moving = true;
@@ -200,13 +200,40 @@ void WallFollower::update_callback()
 		return;
 	}
 
+	/************************************************************
+	** Branch table: decide first, publish once at the end.
+	** The thresholds and the two velocities are unchanged from the handout;
+	** exception 2 only makes the decision visible (branch number, the five
+	** beams it is decided from, and the command that follows from it).
+	************************************************************/
+	int branch = 0;			// sentinel: 0 is never a real branch
+	double cmd_v = 0.0, cmd_w = 0.0;
+
 	if (near_start) {update_cmd_vel(0.0, 0.0); exit(0);}
-	else if (scan_data_[LEFT_FRONT] > TH_LEFT_OPEN) update_cmd_vel(SPEED_ARC, TURN_HARD);
-	else if (scan_data_[FRONT] < TH_FRONT_STOP) update_cmd_vel(0.0, -TURN_HARD);
-	else if (scan_data_[FRONT_LEFT] < TH_FRONT_LEFT) update_cmd_vel(SPEED_FWD, -TURN_HARD);
-	else if (scan_data_[FRONT_RIGHT] < TH_FRONT_RIGHT) update_cmd_vel(SPEED_FWD, TURN_HARD);
-	else if (scan_data_[LEFT_FRONT] > TH_LEFT_FOLLOW) update_cmd_vel(SPEED_FWD, TURN_HARD);
-	else update_cmd_vel(SPEED_FWD, 0.0);
+	else if (scan_data_[LEFT_FRONT] > TH_LEFT_OPEN) {branch = 1; cmd_v = SPEED_ARC; cmd_w = TURN_HARD;}
+	else if (scan_data_[FRONT] < TH_FRONT_STOP) {branch = 2; cmd_v = 0.0; cmd_w = -TURN_HARD;}
+	else if (scan_data_[FRONT_LEFT] < TH_FRONT_LEFT) {branch = 3; cmd_v = SPEED_FWD; cmd_w = -TURN_HARD;}
+	else if (scan_data_[FRONT_RIGHT] < TH_FRONT_RIGHT) {branch = 4; cmd_v = SPEED_FWD; cmd_w = TURN_HARD;}
+	else if (scan_data_[LEFT_FRONT] > TH_LEFT_FOLLOW) {branch = 5; cmd_v = SPEED_FWD; cmd_w = TURN_HARD;}
+	else {branch = 6; cmd_v = SPEED_FWD; cmd_w = 0.0;}
+
+	update_cmd_vel(cmd_v, cmd_w);
+
+	/************************************************************
+	** Exception 2 (V1): two lines a second, so a run can be diagnosed from
+	** the terminal alone. 500 ms undersamples the measured branch-switch
+	** rate (~1.3 per sim second) on purpose: the log shows which branches
+	** occur and what the beams looked like, not an exact switch count -
+	** for that, record a bag and run policy_replay.py.
+	** RF (300 deg) is not a branch input; it is logged as the mirror of LF
+	** so that left/right asymmetry is visible.
+	************************************************************/
+	RCLCPP_INFO_THROTTLE(
+		this->get_logger(), *this->get_clock(), 500,
+		"branch=%d cmd=(%.3f,%.3f) F=%.3f FL=%.3f LF=%.3f RF=%.3f FR=%.3f",
+		branch, cmd_v, cmd_w,
+		scan_data_[FRONT], scan_data_[FRONT_LEFT], scan_data_[LEFT_FRONT],
+		scan_data_[RIGHT_FRONT], scan_data_[FRONT_RIGHT]);
 }
 
 
