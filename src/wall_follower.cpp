@@ -6,10 +6,36 @@
 
 #include "wall_follower/wall_follower.hpp"
 
+#include <cmath>
 #include <memory>
 
 
 using namespace std::chrono_literals;
+
+/************************************************************
+** V1 tunable parameters
+** V1 only ever changes these numbers (TODO section 1.3: one experiment =
+** one parameter = one bag). They carry the original handout values, so
+** 1.1 is a pure refactor: behaviour is unchanged, and any later change
+** seen in a bag is attributable to the single parameter that was edited.
+************************************************************/
+// distance thresholds [m]
+#define TH_FRONT_STOP	0.7	// front closer than this -> turn in place
+#define TH_LEFT_OPEN	0.9	// left-front open beyond this -> wide left arc
+#define TH_FRONT_LEFT	0.6	// front-left closer than this -> veer right
+#define TH_FRONT_RIGHT	0.6	// front-right closer than this -> veer left
+#define TH_LEFT_FOLLOW	0.6	// left-front still open -> keep following the wall
+// velocities
+#define SPEED_FWD	0.3	// forward speed [m/s]
+#define SPEED_ARC	0.2	// forward speed while arcing left [m/s]
+#define TURN_HARD	1.5	// hard turn rate [rad/s]
+
+/************************************************************
+** V1 state
+** File-scope rather than a class member: the class declaration lives in
+** the header, and the header is frozen for V1.
+************************************************************/
+static bool scan_valid_ = false;	// set once a frame holding usable ranges has arrived
 
 WallFollower::WallFollower()
 : Node("wall_follower_node")
@@ -105,6 +131,25 @@ void WallFollower::scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr ms
 {
 	uint16_t scan_angle[12] = {0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330};
 
+	/************************************************************
+	** Exception 1 (V1): never mistake a dead scan for "wall ahead".
+	** An all-invalid frame leaves scan_data_ at its constructor value 0.0,
+	** which makes FRONT < TH_FRONT_STOP true for *every* heading: the robot
+	** then spins in place for ever and never arms near_start. Only a frame
+	** carrying usable ranges may set the flag, and the flag latches, so a
+	** single bad frame cannot interrupt a robot that is under way.
+	************************************************************/
+	int valid = 0;
+	for (const auto & r : msg->ranges)
+		if (std::isfinite(r) && r > msg->range_min) valid++;
+	if (valid == 0)
+		return;
+	if (!scan_valid_)
+		RCLCPP_INFO(
+			this->get_logger(), "scan usable: %d/%zu beams beyond range_min",
+			valid, msg->ranges.size());
+	scan_valid_ = true;
+
 	double closest = msg->range_max;
 	for (int angle = 360-BEAM_WIDTH; angle < 360; angle++)
 		if (msg->ranges.at(angle) < closest)
@@ -137,18 +182,31 @@ void WallFollower::update_cmd_vel(double linear, double angular)
 ** Update functions
 ********************************************************************************/
 
-bool pl_near;
-
-
 void WallFollower::update_callback()
 {
+	/************************************************************
+	** Exception 1 (V1): no usable scan yet -> hold still, and say so.
+	** Sending zero rather than a bare return matters: a bare return
+	** publishes nothing, and the OpenCR firmware has no cmd_vel timeout,
+	** so the robot would keep driving on the last command it was given
+	** (the same mechanism as "the robot keeps turning after Ctrl-C").
+	************************************************************/
+	if (!scan_valid_)
+	{
+		RCLCPP_WARN_THROTTLE(
+			this->get_logger(), *this->get_clock(), 2000,
+			"no usable scan yet - holding still");
+		update_cmd_vel(0.0, 0.0);
+		return;
+	}
+
 	if (near_start) {update_cmd_vel(0.0, 0.0); exit(0);}
-	else if (scan_data_[LEFT_FRONT] > 0.9) update_cmd_vel(0.2, 1.5);
-	else if (scan_data_[FRONT] < 0.7) update_cmd_vel(0.0, -1.5);
-	else if (scan_data_[FRONT_LEFT] < 0.6) update_cmd_vel(0.3, -1.5);
-	else if (scan_data_[FRONT_RIGHT] < 0.6) update_cmd_vel(0.3, 1.5);
-	else if (scan_data_[LEFT_FRONT] > 0.6) update_cmd_vel(0.3, 1.5);
-	else update_cmd_vel(0.3, 0.0);
+	else if (scan_data_[LEFT_FRONT] > TH_LEFT_OPEN) update_cmd_vel(SPEED_ARC, TURN_HARD);
+	else if (scan_data_[FRONT] < TH_FRONT_STOP) update_cmd_vel(0.0, -TURN_HARD);
+	else if (scan_data_[FRONT_LEFT] < TH_FRONT_LEFT) update_cmd_vel(SPEED_FWD, -TURN_HARD);
+	else if (scan_data_[FRONT_RIGHT] < TH_FRONT_RIGHT) update_cmd_vel(SPEED_FWD, TURN_HARD);
+	else if (scan_data_[LEFT_FRONT] > TH_LEFT_FOLLOW) update_cmd_vel(SPEED_FWD, TURN_HARD);
+	else update_cmd_vel(SPEED_FWD, 0.0);
 }
 
 
