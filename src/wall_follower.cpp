@@ -63,10 +63,6 @@ static bool g_scan_received = false;
 // 只打印一次 LiDAR 元信息，防止每帧刷屏。
 static bool g_scan_meta_printed = false;
 
-// 【新增日志】最近一次真正发出去的指令，只给节流日志用。
-static double g_last_cmd_v = 0.0;
-static double g_last_cmd_w = 0.0;
-
 // ================================================================
 // 【真机现场可改参数】
 // ================================================================
@@ -366,6 +362,7 @@ void WallFollower::scan_callback(
             msg->ranges.size());
         return;
     }
+
     // ------------------------------------------------------------
     // 扇区 0：FRONT，中心在 0°。
     // 因为 0° 正好跨数组首尾，所以要取 345~359° 和 0~14° 两段。
@@ -463,11 +460,6 @@ void WallFollower::update_cmd_vel(
 
     // 把速度命令发到 /cmd_vel。
     cmd_vel_pub_->publish(cmd_vel);
-
-    // 【新增日志】记录真正发出去的值。
-    // 这样节流日志里 cmd=(v,w) 显示的就是实际发布的内容，不会与日志不一致。
-    g_last_cmd_v = linear;
-    g_last_cmd_w = angular;
 }
 
 // ================================================================
@@ -511,11 +503,6 @@ void WallFollower::update_callback()
     }
 
     // ------------------------------------------------------------
-    // 本拍命中的规则号（0 仅作哨兵，正常一定被赋成 1..6）。
-    // ------------------------------------------------------------
-    int rule = 0;
-
-    // ------------------------------------------------------------
     // 【真机诊断】打印四个最关键的 LiDAR 扇区。
     // ------------------------------------------------------------
     // FRONT        通常对应 0°，机器人正前方。
@@ -537,8 +524,6 @@ void WallFollower::update_callback()
     // 原始代码先检查“左墙消失”，可能出现前面已经有墙却仍先左转的情况。
     if (scan_data_[FRONT] < FRONT_BLOCK_DIST)
     {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 1;
         fprintf(
             stderr,
             "[RULE 1] FRONT < %.2f -> TURN RIGHT IN PLACE\n",
@@ -554,8 +539,6 @@ void WallFollower::update_callback()
     // ============================================================
     else if (scan_data_[LEFT_FRONT] > LEFT_OPEN_DIST)
     {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 2;
         fprintf(
             stderr,
             "[RULE 2] LEFT_FRONT > %.2f -> LEFT WALL OPEN, TURN LEFT\n",
@@ -570,8 +553,6 @@ void WallFollower::update_callback()
     // ============================================================
     else if (scan_data_[FRONT_LEFT] < FRONT_LEFT_CLOSE)
     {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 3;
         fprintf(
             stderr,
             "[RULE 3] FRONT_LEFT < %.2f -> TOO CLOSE LEFT, STEER RIGHT\n",
@@ -586,8 +567,6 @@ void WallFollower::update_callback()
     // ============================================================
     else if (scan_data_[FRONT_RIGHT] < FRONT_RIGHT_CLOSE)
     {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 4;
         fprintf(
             stderr,
             "[RULE 4] FRONT_RIGHT < %.2f -> TOO CLOSE RIGHT, STEER LEFT\n",
@@ -602,8 +581,6 @@ void WallFollower::update_callback()
     // ============================================================
     else if (scan_data_[LEFT_FRONT] > LEFT_TOO_FAR_DIST)
     {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 5;
         fprintf(
             stderr,
             "[RULE 5] LEFT_FRONT > %.2f -> SLIGHTLY FAR FROM LEFT, STEER LEFT\n",
@@ -618,42 +595,11 @@ void WallFollower::update_callback()
     // ============================================================
     else
     {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 6;
-
         fprintf(stderr, "[RULE 6] Normal corridor -> MOVE FORWARD\n");
 
         // 正常直行。
         update_cmd_vel(LINEAR_SPEED, 0.0);
     }
-
-    // ============================================================
-    // 【新增日志】每 0.5 秒一行：命中规则 + 实际发出的指令 + 五个扇区
-    //
-    // 控制循环是 20 Hz，所以这是故意的欠采样：它回答“这段时间都在哪些
-    // 规则里、各扇区大概什么值”，不能用来数精确的切换次数。
-    //
-    // F=0°(±15°)、FL=30°、LF=60°、FR=330° 是六条规则的判据；
-    // RF=300° 不参与任何规则，它是 LF 的镜像，用来看左右不对称。
-    //
-    // 现场判读：
-    //   cmd=(0.000,-0.600) 连续出现 -> 原地右转，看起来就像“不动”
-    //   cmd=(0.150,0.000) 但机器人不动 -> 命令没被执行：
-    //       另开终端对比 ros2 topic echo /cmd_vel 与 /odom 的 twist
-    // ============================================================
-    RCLCPP_INFO_THROTTLE(
-        this->get_logger(),
-        *this->get_clock(),
-        500,
-        "rule=%d cmd=(%.3f,%.3f) F=%.3f FL=%.3f LF=%.3f RF=%.3f FR=%.3f",
-        rule,
-        g_last_cmd_v,
-        g_last_cmd_w,
-        scan_data_[FRONT],
-        scan_data_[FRONT_LEFT],
-        scan_data_[LEFT_FRONT],
-        scan_data_[RIGHT_FRONT],
-        scan_data_[FRONT_RIGHT]);
 
     // ============================================================
     // 【现场怎么调】
