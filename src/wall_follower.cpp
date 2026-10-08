@@ -26,7 +26,7 @@ using namespace std::chrono_literals;
 #define TH_FRONT_RIGHT	0.6	// front-right closer than this -> veer left
 #define TH_LEFT_FOLLOW	0.6	// left-front still open -> keep following the wall
 // velocities
-#define SPEED_FWD	0.3	// forward speed [m/s]
+#define SPEED_FWD	0.22	// forward speed [m/s]
 #define SPEED_ARC	0.2	// forward speed while arcing left [m/s]
 #define TURN_HARD	1.5	// hard turn rate [rad/s]
 
