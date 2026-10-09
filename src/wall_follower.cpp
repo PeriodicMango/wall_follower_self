@@ -582,7 +582,7 @@ void WallFollower::update_callback()
         update_cmd_vel(LINEAR_SPEED, -0.40);
 
         if (scan_data_[BACK_LEFT] < 0.25 || scan_data_[BACK_RIGHT] < 0.25) {
-            update_cmd_vel(-LINEAR_SPEED, 0.0);
+            update_cmd_vel(LINEAR_SPEED, 0.0);
             
         }        
     }
@@ -602,8 +602,7 @@ void WallFollower::update_callback()
         // 保持前进，但 angular 为正，向左偏。
         update_cmd_vel(LINEAR_SPEED, 0.40);
         if (scan_data_[BACK_LEFT] < 0.25 || scan_data_[BACK_RIGHT] < 0.25) {
-            update_cmd_vel(-LINEAR_SPEED, 0.0);
-            
+            update_cmd_vel(LINEAR_SPEED, 0.0); 
         } 
     }
 
