@@ -80,15 +80,13 @@ namespace
     // 左侧/左前方距离大于 0.60 m：认为左墙“消失”，可能遇到门口/外角。
     // 如果机器人总是乱往左拐：把它调大，例如 0.70~0.90。
     // 如果机器人错过房间门口：把它调小，例如 0.50~0.55。
-    constexpr double LEFT_OPEN_DIST = 0.60;
+    constexpr double LEFT_OPEN_DIST = 0.50;
 
     // 左前方小于 0.25 m：太靠左墙，需要向右修。
-    constexpr double FRONT_LEFT_CLOSE = 0.6;
+    constexpr double FRONT_LEFT_CLOSE = 0.5;
 
     // 右前方小于 0.20 m：太靠右侧障碍，需要向左修。
     constexpr double FRONT_RIGHT_CLOSE = 0.6;
-
-    constexpr double BACK_CLOSE = 0.25;
 
     // 左侧略偏远：0.50~0.60 m 之间轻微向左找墙。
     constexpr double LEFT_TOO_FAR_DIST = 0.50;
@@ -579,8 +577,14 @@ void WallFollower::update_callback()
             "[RULE 3] FRONT_LEFT < %.2f -> TOO CLOSE LEFT, STEER RIGHT\n",
             FRONT_LEFT_CLOSE);
 
+
         // 保持前进，但 angular 为负，向右偏。
         update_cmd_vel(LINEAR_SPEED, -0.40);
+
+        if (scan_data_[BACK_LEFT] < 0.25 || scan_data_[BACK_RIGHT] < 0.25) {
+            update_cmd_vel(-LINEAR_SPEED, 0.0);
+            
+        }        
     }
 
     // ============================================================
@@ -597,6 +601,10 @@ void WallFollower::update_callback()
 
         // 保持前进，但 angular 为正，向左偏。
         update_cmd_vel(LINEAR_SPEED, 0.40);
+        if (scan_data_[BACK_LEFT] < 0.25 || scan_data_[BACK_RIGHT] < 0.25) {
+            update_cmd_vel(-LINEAR_SPEED, 0.0);
+            
+        } 
     }
 
     // ============================================================
@@ -613,15 +621,6 @@ void WallFollower::update_callback()
 
         // 比 Rule 2 转得轻，避免来回摆动太大。
         update_cmd_vel(LINEAR_SPEED, GENTLE_TURN_SPEED);
-    }
-
-    else if (
-        scan_data_[LEFT_BACK] < BACK_CLOSE ||
-        scan_data_[BACK_LEFT] < BACK_CLOSE ||
-        scan_data_[RIGHT_BACK] < BACK_CLOSE ||
-        scan_data_[BACK_RIGHT] < BACK_CLOSE
-    ) {
-        update_cmd_vel(1.0, 0.0);
     }
 
     // ============================================================
