@@ -88,6 +88,8 @@ namespace
     // 右前方小于 0.20 m：太靠右侧障碍，需要向左修。
     constexpr double FRONT_RIGHT_CLOSE = 0.6;
 
+    constexpr double BACK_CLOSE = 0.25;
+
     // 左侧略偏远：0.50~0.60 m 之间轻微向左找墙。
     constexpr double LEFT_TOO_FAR_DIST = 0.50;
 
@@ -611,6 +613,15 @@ void WallFollower::update_callback()
 
         // 比 Rule 2 转得轻，避免来回摆动太大。
         update_cmd_vel(LINEAR_SPEED, GENTLE_TURN_SPEED);
+    }
+
+    else if (
+        scan_data_[LEFT_BACK] < BACK_CLOSE ||
+        scan_data_[BACK_LEFT] < BACK_CLOSE ||
+        scan_data_[RIGHT_BACK] < BACK_CLOSE ||
+        scan_data_[BACK_RIGHT] < BACK_CLOSE
+    ) {
+        update_cmd_vel(1.0, 0.0);
     }
 
     // ============================================================
