@@ -550,22 +550,6 @@ void WallFollower::update_callback()
     }
 
     // ============================================================
-    // Rule 2：左墙突然很远 -> 左转寻找墙/进入左侧开口
-    // ============================================================
-    else if (scan_data_[LEFT_FRONT] > LEFT_OPEN_DIST)
-    {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 2;
-        fprintf(
-            stderr,
-            "[RULE 2] LEFT_FRONT > %.2f -> LEFT WALL OPEN, TURN LEFT\n",
-            LEFT_OPEN_DIST);
-
-        // 一边慢慢向前，一边左转，形成弧线。
-        update_cmd_vel(TURN_LINEAR_SPEED, TURN_SPEED);
-    }
-
-    // ============================================================
     // Rule 3：左前方太近 -> 向右修正
     // ============================================================
     else if (scan_data_[FRONT_LEFT] < FRONT_LEFT_CLOSE)
@@ -580,6 +564,37 @@ void WallFollower::update_callback()
 
         // 保持前进，但 angular 为负，向右偏。
         update_cmd_vel(LINEAR_SPEED, -0.40);       
+    }
+
+    // ============================================================
+    // 新增：左前方 60° 近障碍保护
+    // ============================================================
+    // Marker 在右转过程中可能从 0° -> 30° -> 60°。
+    // 如果已经进入 LEFT_FRONT(约 60°) 且距离小于 0.30 m，
+    // 继续向右避让，避免过早恢复前进。
+    else if (scan_data_[LEFT_FRONT] < 0.30)
+    {
+        fprintf(
+            stderr,
+            "[LEFT_FRONT CLOSE] LEFT_FRONT < 0.30 -> KEEP STEERING RIGHT\n");
+
+        update_cmd_vel(TURN_LINEAR_SPEED, -0.40);
+    }
+
+    // ============================================================
+    // Rule 2：左墙突然很远 -> 左转寻找墙/进入左侧开口
+    // ============================================================
+    else if (scan_data_[LEFT_FRONT] > LEFT_OPEN_DIST)
+    {
+        // 记录规则号，供下面的节流日志使用。
+        rule = 2;
+        fprintf(
+            stderr,
+            "[RULE 2] LEFT_FRONT > %.2f -> LEFT WALL OPEN, TURN LEFT\n",
+            LEFT_OPEN_DIST);
+
+        // 一边慢慢向前，一边左转，形成弧线。
+        update_cmd_vel(TURN_LINEAR_SPEED, TURN_SPEED);
     }
 
     // ============================================================
