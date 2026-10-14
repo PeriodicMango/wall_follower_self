@@ -75,18 +75,18 @@ namespace
     // 正前方距离小于 0.40 m：认为前面被堵住。
     // 如果机器人经常离墙很远就转：调小，比如 0.35。
     // 如果机器人总是快撞墙才转：调大，比如 0.45~0.50。
-    constexpr double FRONT_BLOCK_DIST = 0.50;
+    constexpr double FRONT_BLOCK_DIST = 0.55;
 
     // 左侧/左前方距离大于 0.60 m：认为左墙“消失”，可能遇到门口/外角。
     // 如果机器人总是乱往左拐：把它调大，例如 0.70~0.90。
     // 如果机器人错过房间门口：把它调小，例如 0.50~0.55。
-    constexpr double LEFT_OPEN_DIST = 0.70;
+    constexpr double LEFT_OPEN_DIST = 0.60;
 
     // 左前方小于 0.25 m：太靠左墙，需要向右修。
-    constexpr double FRONT_LEFT_CLOSE = 0.7;
+    constexpr double FRONT_LEFT_CLOSE = 0.3;
 
     // 右前方小于 0.20 m：太靠右侧障碍，需要向左修。
-    constexpr double FRONT_RIGHT_CLOSE = 0.7;
+    constexpr double FRONT_RIGHT_CLOSE = 0.25;
 
     // 左侧略偏远：0.50~0.60 m 之间轻微向左找墙。
     constexpr double LEFT_TOO_FAR_DIST = 0.50;
@@ -100,7 +100,7 @@ namespace
 
     // 普通转弯角速度，单位 rad/s。
     // 正数 = 左转，负数 = 右转（标准 ROS Twist 约定）。
-    constexpr double TURN_SPEED = 0.60;
+    constexpr double TURN_SPEED = 0.6;
 
     // 较轻微的修正角速度。
     constexpr double GENTLE_TURN_SPEED = 0.30;
