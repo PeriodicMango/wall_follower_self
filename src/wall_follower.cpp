@@ -601,18 +601,18 @@ void WallFollower::update_callback()
     // ============================================================
     // Rule 5：左墙有点远，但还没完全消失 -> 轻微左修
     // ============================================================
-    else if (scan_data_[LEFT_FRONT] > LEFT_TOO_FAR_DIST)
-    {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 5;
-        fprintf(
-            stderr,
-            "[RULE 5] LEFT_FRONT > %.2f -> SLIGHTLY FAR FROM LEFT, STEER LEFT\n",
-            LEFT_TOO_FAR_DIST);
+    // else if (scan_data_[LEFT_FRONT] > LEFT_TOO_FAR_DIST)
+    // {
+    //     // 记录规则号，供下面的节流日志使用。
+    //     rule = 5;
+    //     fprintf(
+    //         stderr,
+    //         "[RULE 5] LEFT_FRONT > %.2f -> SLIGHTLY FAR FROM LEFT, STEER LEFT\n",
+    //         LEFT_TOO_FAR_DIST);
 
-        // 比 Rule 2 转得轻，避免来回摆动太大。
-        update_cmd_vel(LINEAR_SPEED, GENTLE_TURN_SPEED);
-    }
+    //     // 比 Rule 2 转得轻，避免来回摆动太大。
+    //     update_cmd_vel(LINEAR_SPEED, GENTLE_TURN_SPEED);
+    // }
 
     // ============================================================
     // Rule 6：都没有触发 -> 直行
