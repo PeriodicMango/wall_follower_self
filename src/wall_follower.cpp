@@ -552,7 +552,7 @@ void WallFollower::update_callback()
     // ============================================================
     // Rule 3：左前方太近 -> 向右修正
     // ============================================================
-    else if (scan_data_[FRONT_LEFT] < (FRONT_LEFT_CLOSE+0.1))
+    else if (scan_data_[FRONT_LEFT] < FRONT_LEFT_CLOSE)
     {
         // 记录规则号，供下面的节流日志使用。
         rule = 3;
@@ -572,7 +572,7 @@ void WallFollower::update_callback()
     // Marker 在右转过程中可能从 0° -> 30° -> 60°。
     // 如果已经进入 LEFT_FRONT(约 60°) 且距离小于 0.30 m，
     // 继续向右避让，避免过早恢复前进。
-    else if (scan_data_[LEFT_FRONT] < 0.40)
+    else if (scan_data_[LEFT_FRONT] < 0.25)
     {
         fprintf(
             stderr,
@@ -616,18 +616,18 @@ void WallFollower::update_callback()
     // ============================================================
     // Rule 5：左墙有点远，但还没完全消失 -> 轻微左修
     // ============================================================
-    // else if (scan_data_[LEFT_FRONT] > LEFT_TOO_FAR_DIST)
-    // {
-    //     // 记录规则号，供下面的节流日志使用。
-    //     rule = 5;
-    //     fprintf(
-    //         stderr,
-    //         "[RULE 5] LEFT_FRONT > %.2f -> SLIGHTLY FAR FROM LEFT, STEER LEFT\n",
-    //         LEFT_TOO_FAR_DIST);
+    else if (scan_data_[LEFT_FRONT] > LEFT_TOO_FAR_DIST)
+    {
+        // 记录规则号，供下面的节流日志使用。
+        rule = 5;
+        fprintf(
+            stderr,
+            "[RULE 5] LEFT_FRONT > %.2f -> SLIGHTLY FAR FROM LEFT, STEER LEFT\n",
+            LEFT_TOO_FAR_DIST);
 
-    //     // 比 Rule 2 转得轻，避免来回摆动太大。
-    //     update_cmd_vel(LINEAR_SPEED, GENTLE_TURN_SPEED);
-    // }
+        // 比 Rule 2 转得轻，避免来回摆动太大。
+        update_cmd_vel(LINEAR_SPEED, GENTLE_TURN_SPEED);
+    }
 
     // ============================================================
     // Rule 6：都没有触发 -> 直行
