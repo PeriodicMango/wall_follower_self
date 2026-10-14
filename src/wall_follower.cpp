@@ -552,7 +552,7 @@ void WallFollower::update_callback()
     // ============================================================
     // Rule 3：左前方太近 -> 向右修正
     // ============================================================
-    else if (scan_data_[FRONT_LEFT] < FRONT_LEFT_CLOSE)
+    else if (scan_data_[FRONT_LEFT] < (FRONT_LEFT_CLOSE+0.1))
     {
         // 记录规则号，供下面的节流日志使用。
         rule = 3;
@@ -572,7 +572,7 @@ void WallFollower::update_callback()
     // Marker 在右转过程中可能从 0° -> 30° -> 60°。
     // 如果已经进入 LEFT_FRONT(约 60°) 且距离小于 0.30 m，
     // 继续向右避让，避免过早恢复前进。
-    else if (scan_data_[LEFT_FRONT] < 0.30)
+    else if (scan_data_[LEFT_FRONT] < 0.40)
     {
         fprintf(
             stderr,
