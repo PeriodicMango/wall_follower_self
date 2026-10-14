@@ -546,7 +546,7 @@ void WallFollower::update_callback()
 
         // linear=0：不再向前顶墙。
         // angular<0：向右转。
-        update_cmd_vel(0.0, -TURN_SPEED+0.5);
+        update_cmd_vel(0.0, -TURN_SPEED-0.5);
     }
 
     // ============================================================
