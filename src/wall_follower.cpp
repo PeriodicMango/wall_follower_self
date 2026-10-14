@@ -80,13 +80,13 @@ namespace
     // 左侧/左前方距离大于 0.60 m：认为左墙“消失”，可能遇到门口/外角。
     // 如果机器人总是乱往左拐：把它调大，例如 0.70~0.90。
     // 如果机器人错过房间门口：把它调小，例如 0.50~0.55。
-    constexpr double LEFT_OPEN_DIST = 0.50;
+    constexpr double LEFT_OPEN_DIST = 0.70;
 
     // 左前方小于 0.25 m：太靠左墙，需要向右修。
-    constexpr double FRONT_LEFT_CLOSE = 0.5;
+    constexpr double FRONT_LEFT_CLOSE = 0.7;
 
     // 右前方小于 0.20 m：太靠右侧障碍，需要向左修。
-    constexpr double FRONT_RIGHT_CLOSE = 0.6;
+    constexpr double FRONT_RIGHT_CLOSE = 0.7;
 
     // 左侧略偏远：0.50~0.60 m 之间轻微向左找墙。
     constexpr double LEFT_TOO_FAR_DIST = 0.50;
@@ -546,7 +546,7 @@ void WallFollower::update_callback()
 
         // linear=0：不再向前顶墙。
         // angular<0：向右转。
-        update_cmd_vel(1.0, -TURN_SPEED);
+        update_cmd_vel(0.0, -TURN_SPEED);
     }
 
     // ============================================================
