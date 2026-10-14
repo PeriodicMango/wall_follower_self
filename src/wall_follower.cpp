@@ -552,7 +552,7 @@ void WallFollower::update_callback()
     // ============================================================
     // Rule 2：左墙突然很远 -> 左转寻找墙/进入左侧开口
     // ============================================================
-    else if (scan_data_[LEFT_FRONT] > LEFT_OPEN_DIST)
+    else if (scan_data_[LEFT] > LEFT_OPEN_DIST)
     {
         // 记录规则号，供下面的节流日志使用。
         rule = 2;
