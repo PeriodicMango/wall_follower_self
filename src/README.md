@@ -16,3 +16,5 @@
 - **`wall_follower_2_1.cpp`** —— 同 `wall_follower_2.cpp`，只把 `TURN_LINEAR_SPEED` 改成 0.10。
 
 - **`wall_follower_2_2.cpp`** —— 同 `wall_follower_2_1.cpp`，只把 `FRONT_LEFT_CLOSE` 和 `FRONT_RIGHT_CLOSE` 改成 0.5。
+
+English: `README.en.md`
