@@ -75,7 +75,7 @@ namespace
     // 正前方距离小于 0.40 m：认为前面被堵住。
     // 如果机器人经常离墙很远就转：调小，比如 0.35。
     // 如果机器人总是快撞墙才转：调大，比如 0.45~0.50。
-    constexpr double FRONT_BLOCK_DIST = 0.55;
+    constexpr double FRONT_BLOCK_DIST = 0.50;
 
     // 左侧/左前方距离大于 0.60 m：认为左墙“消失”，可能遇到门口/外角。
     // 如果机器人总是乱往左拐：把它调大，例如 0.70~0.90。
@@ -83,10 +83,10 @@ namespace
     constexpr double LEFT_OPEN_DIST = 0.60;
 
     // 左前方小于 0.25 m：太靠左墙，需要向右修。
-    constexpr double FRONT_LEFT_CLOSE = 0.3;
+    constexpr double FRONT_LEFT_CLOSE = 0.6;
 
     // 右前方小于 0.20 m：太靠右侧障碍，需要向左修。
-    constexpr double FRONT_RIGHT_CLOSE = 0.25;
+    constexpr double FRONT_RIGHT_CLOSE = 0.6;
 
     // 左侧略偏远：0.50~0.60 m 之间轻微向左找墙。
     constexpr double LEFT_TOO_FAR_DIST = 0.50;
@@ -96,11 +96,11 @@ namespace
     constexpr double LINEAR_SPEED = 0.15;
 
     // 转弯时仍然保留一点前进速度，单位 m/s。
-    constexpr double TURN_LINEAR_SPEED = 0.13;
+    constexpr double TURN_LINEAR_SPEED = 0.10;
 
     // 普通转弯角速度，单位 rad/s。
     // 正数 = 左转，负数 = 右转（标准 ROS Twist 约定）。
-    constexpr double TURN_SPEED = 0.6;
+    constexpr double TURN_SPEED = 0.60;
 
     // 较轻微的修正角速度。
     constexpr double GENTLE_TURN_SPEED = 0.30;
@@ -546,39 +546,7 @@ void WallFollower::update_callback()
 
         // linear=0：不再向前顶墙。
         // angular<0：向右转。
-        update_cmd_vel(0.0, -TURN_SPEED-0.7);
-    }
-
-    // ============================================================
-    // Rule 3：左前方太近 -> 向右修正
-    // ============================================================
-    else if (scan_data_[FRONT_LEFT] < FRONT_LEFT_CLOSE)
-    {
-        // 记录规则号，供下面的节流日志使用。
-        rule = 3;
-        fprintf(
-            stderr,
-            "[RULE 3] FRONT_LEFT < %.2f -> TOO CLOSE LEFT, STEER RIGHT\n",
-            FRONT_LEFT_CLOSE);
-
-
-        // 保持前进，但 angular 为负，向右偏。
-        update_cmd_vel(LINEAR_SPEED, -0.40);       
-    }
-
-    // ============================================================
-    // 新增：左前方 60° 近障碍保护
-    // ============================================================
-    // Marker 在右转过程中可能从 0° -> 30° -> 60°。
-    // 如果已经进入 LEFT_FRONT(约 60°) 且距离小于 0.30 m，
-    // 继续向右避让，避免过早恢复前进。
-    else if (scan_data_[LEFT_FRONT] < 0.25)
-    {
-        fprintf(
-            stderr,
-            "[LEFT_FRONT CLOSE] LEFT_FRONT < 0.30 -> KEEP STEERING RIGHT\n");
-
-        update_cmd_vel(TURN_LINEAR_SPEED, -0.40);
+        update_cmd_vel(0.0, -TURN_SPEED);
     }
 
     // ============================================================
@@ -595,6 +563,22 @@ void WallFollower::update_callback()
 
         // 一边慢慢向前，一边左转，形成弧线。
         update_cmd_vel(TURN_LINEAR_SPEED, TURN_SPEED);
+    }
+
+    // ============================================================
+    // Rule 3：左前方太近 -> 向右修正
+    // ============================================================
+    else if (scan_data_[FRONT_LEFT] < FRONT_LEFT_CLOSE)
+    {
+        // 记录规则号，供下面的节流日志使用。
+        rule = 3;
+        fprintf(
+            stderr,
+            "[RULE 3] FRONT_LEFT < %.2f -> TOO CLOSE LEFT, STEER RIGHT\n",
+            FRONT_LEFT_CLOSE);
+
+        // 保持前进，但 angular 为负，向右偏。
+        update_cmd_vel(LINEAR_SPEED, -0.40);
     }
 
     // ============================================================
