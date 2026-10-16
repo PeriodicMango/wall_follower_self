@@ -43,15 +43,26 @@ set(dependencies
   "tf2"
 )
 
-set(EXEC_NAME "wall_follower")
+# 每个版本各自编成一个可执行文件；现场用 `ros2 run wall_follower <名字>` 切换，不用重新 build。
+# 原来的 add_executable(${EXEC_NAME} src/wall_follower.cpp) 已去掉：
+# 仓库里 src/wall_follower.cpp 已改名为 src/wall_follower_2.cpp。
+set(ALT_VERSIONS
+  wall_follower_1
+  wall_follower_1_1
+  wall_follower_2
+  wall_follower_2_1
+  wall_follower_2_2
+)
 
-add_executable(${EXEC_NAME} src/wall_follower.cpp)
-ament_target_dependencies(${EXEC_NAME} ${dependencies})
+foreach(v IN LISTS ALT_VERSIONS)
+  add_executable(${v} src/${v}.cpp)
+  ament_target_dependencies(${v} ${dependencies})
+endforeach()
 
 ################################################################################
 # Install
 ################################################################################
-install(TARGETS ${EXEC_NAME}
+install(TARGETS ${ALT_VERSIONS}
   DESTINATION lib/${PROJECT_NAME}
 )
 
