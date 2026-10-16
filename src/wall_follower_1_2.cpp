@@ -83,10 +83,10 @@ namespace
     constexpr double LEFT_OPEN_DIST = 0.60;
 
     // 左前方小于 0.25 m：太靠左墙，需要向右修。
-    constexpr double FRONT_LEFT_CLOSE = 0.6;
+    constexpr double FRONT_LEFT_CLOSE = 0.5;
 
     // 右前方小于 0.20 m：太靠右侧障碍，需要向左修。
-    constexpr double FRONT_RIGHT_CLOSE = 0.6;
+    constexpr double FRONT_RIGHT_CLOSE = 0.5;
 
     // 左侧略偏远：0.50~0.60 m 之间轻微向左找墙。
     constexpr double LEFT_TOO_FAR_DIST = 0.50;
