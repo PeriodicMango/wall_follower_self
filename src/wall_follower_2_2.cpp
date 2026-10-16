@@ -572,7 +572,7 @@ void WallFollower::update_callback()
     // Marker 在右转过程中可能从 0° -> 30° -> 60°。
     // 如果已经进入 LEFT_FRONT(约 60°) 且距离小于 0.30 m，
     // 继续向右避让，避免过早恢复前进。
-    else if (scan_data_[LEFT_FRONT] < 0.25)
+    else if (scan_data_[LEFT_FRONT] < 0.3)
     {
         fprintf(
             stderr,
