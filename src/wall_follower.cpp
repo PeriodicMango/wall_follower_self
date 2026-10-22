@@ -32,7 +32,7 @@ static double g_marker_y = 0.0;
 static double g_last_marker_time_sec = -1.0;
 
 // Vision parameters for testing.
-constexpr double MARKER_TIMEOUT_SEC = 0.50;
+constexpr double MARKER_TIMEOUT_SEC = 2.0;
 constexpr double MARKER_AVOID_DISTANCE = 0.70;
 constexpr double MARKER_TURN_SPEED = 0.40;
 // ===== VISION CHANGE 2 END =====
@@ -340,7 +340,10 @@ void WallFollower::update_callback()
     }
 
     // ===== VISION CHANGE 4 START =====
-    // Clear marker detection if no new vision message arrives for 0.5 seconds.
+    // Clear marker detection if no new vision message arrives.
+    // Must exceed the camera frame interval (0.74 Hz -> 1.35 s), otherwise
+    // the flag expires between frames and rule 7 only ever fires for
+    // part of a cycle.
     if (
         g_marker_detected &&
         g_last_marker_time_sec >= 0.0)
