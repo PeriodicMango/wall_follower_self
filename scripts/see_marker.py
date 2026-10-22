@@ -1,225 +1,308 @@
 #!/usr/bin/env python3
-
-# Released under GPLv3: https://www.gnu.org/licenses/gpl-3.0.html
-# Author: Claude Sammut
-# Last Modified: 2024.10.14
-
-# ROS 2 program to subscribe to real-time streaming 
-# video from TurtleBot3 Pi camera and find coloured landmarks.
-
-# Colour segementation and connected components example added by Claude sSammut
-	
-# Import the necessary libraries
-import rclpy # Python library for ROS 2
-from rclpy.node import Node # Handles the creation of nodes
-import cv2 # OpenCV library
-from cv_bridge import CvBridge # Package to convert between ROS and OpenCV Images
 import math
+import cv2
+import numpy as np
+import rclpy
 
-from sensor_msgs.msg import Image # Image is the message type
-from sensor_msgs.msg import LaserScan # Laser scan message type
-from sensor_msgs.msg import CameraInfo # Need to know camera frame
-from geometry_msgs.msg import Point, PointStamped
+from rclpy.node import Node
+from cv_bridge import CvBridge
+from sensor_msgs.msg import CompressedImage
+from geometry_msgs.msg import PointStamped
 
-import wall_follower.landmark
-from wall_follower.landmark import marker_type
+FIELD_OF_VIEW_H = 62.2
 
+# IMPORTANT:
+# point.z in /marker_position stores the index from this exact list.
+# point_transformer.py must use the same ordering later.
+MARKER_TYPES = [
+    'blue/pink',
+    'pink/blue',
+    'green/pink',
+    'pink/green',
+    'yellow/pink',
+    'pink/yellow'
+]
 
-field_of_view_h = 62.2
-field_of_view_v = 48.8
+# HSV ranges from the existing real-robot vision code.
+COLOURS = {
+    'pink':   ((150, 100, 90), (170, 170, 255)),
+    'blue':   ((85, 140, 100), (115, 250, 255)),
+    'green':  ((75, 190, 80), (85, 245, 150)),
+    'yellow': ((20, 210, 170), (32, 255, 245))
+}
+
+MIN_HEIGHT = 3
+MIN_AREA = 13
 
 
 class SeeMarker(Node):
-	"""
-	Create an ImageSubscriber class, which is a subclass of the Node class.
-	"""
-	def __init__(self):
-		"""
-		Class constructor to set up the node
-		"""
-		# Initiate the Node class's constructor and give it a name
-		super().__init__('see_marker')
 
-		self.range = 0
-		self.prev_h = 0
-		self.prev_r = 0
-			
-		# Create the subscriber. This subscriber will receive an Image
-		# from the video_frames topic. The queue size is 10 messages.
-		self.subscription = self.create_subscription(
-			Image,
-			'/camera/image_raw', 
-			self.listener_callback, 
-			10)
-		self.subscription # prevent unused variable warning
-			
-		# Used to convert between ROS and OpenCV images
-		self.br = CvBridge()
+    def __init__(self):
+        super().__init__('see_marker')
 
-		self.point_publisher = self.create_publisher(PointStamped, '/marker_position', 10)
+        self.br = CvBridge()
 
+        self.subscription = self.create_subscription(
+            CompressedImage,
+            '/camera/image_raw/compressed',
+            self.listener_callback,
+            10
+        )
 
-	def listener_callback(self, data):
-		"""
-		Callback function.
-		"""
-		# Display the message on the console
-		# self.get_logger().info('Receiving video frame')
- 
-		# Convert ROS Image message to OpenCV image
-		current_frame = self.br.imgmsg_to_cv2(data, 'bgra8')
+        # Both wall_follower.cpp and point_transformer.py will subscribe
+        # to this topic.
+        self.point_publisher = self.create_publisher(
+            PointStamped,
+            '/marker_position',
+            10
+        )
 
-		# The following code is a simple example of colour segmentation
-		# and connected components analysis
-		
-		# Convert BGR image to HSV
-		hsv_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2HSV)
+        self.get_logger().info('SeeMarker node has been initialised')
 
-		# Find pink blob
-		pink_blob = segment(current_frame, hsv_frame, "pink")
-		if pink_blob:
-			(pink_x, pink_y, pink_h, p_d, p_a) = pink_blob
+    def listener_callback(self, data):
+        if len(data.data) == 0:
+            return
 
-			for c in ["blue", "green", "yellow"]:
-				blob = segment(current_frame, hsv_frame, c)
-				if blob:
-					(c_x, c_y, c_h, c_d, c_a) = blob
+        try:
+            current_frame = self.br.compressed_imgmsg_to_cv2(data)
+        except Exception as e:
+            self.get_logger().error(f'Camera decode failed: {e}')
+            return
 
-					# Check to see if the blobsa are verically aligned
-					if abs(pink_x - c_x) > pink_h:
-#						print(f'pink_x = {pink_x}, pink_y = {pink_y}, h = {pink_h}')
-						continue
+        hsv_frame = cv2.cvtColor(current_frame, cv2.COLOR_BGR2HSV)
+        combined_result = np.zeros_like(current_frame)
 
-					marker_at = PointStamped()
-					marker_at.header.stamp = self.get_clock().now().to_msg()
-					marker_at.header.frame_id = 'camera_link'
+        # Every required marker contains pink.
+        pink_result, pink_blob = self.segment(
+            current_frame,
+            hsv_frame,
+            'pink'
+        )
 
-					if c_y < pink_y:	# +y is down
-#						print(c, "/ pink", f'{c_d:.2f}, {c_a:.2f}')
-						marker_at.point.z = float(marker_type.index(c + '/pink'))
-					else:
-#						print("pink / ", c, f'{p_d:.2f}, {p_a:.2f}')
-						marker_at.point.z = float(marker_type.index('pink/' + c))
-					
-					x, y = polar_to_cartesian(c_d, c_a)
+        if pink_blob is None:
+            self.show_images(current_frame, combined_result)
+            return
 
-					marker_at.point.x = x
-					marker_at.point.y = y
+        combined_result = cv2.bitwise_or(
+            combined_result,
+            pink_result
+        )
 
-#					print(f'Camera coordinates: {x}, {y}')
-					self.point_publisher.publish(marker_at)
-#					self.get_logger().info('Published Point: x=%f, y=%f, z=%f' %
-#						(marker_at.point.x, marker_at.point.y, marker_at.point.z))
+        pink_x, pink_y, pink_h, pink_distance, pink_angle = pink_blob
 
+        # The second colour can be blue, green or yellow.
+        for colour in ['blue', 'green', 'yellow']:
+            colour_result, colour_blob = self.segment(
+                current_frame,
+                hsv_frame,
+                colour
+            )
 
-		# Display camera image
-		cv2.imshow("camera", current_frame)	
-		cv2.waitKey(1)
+            if colour_blob is None:
+                continue
 
+            combined_result = cv2.bitwise_or(
+                combined_result,
+                colour_result
+            )
 
-colours = {
-	"pink":	 	((140,0,0), (170, 255, 255)),
-	"blue":		((100,0,0), (130, 255, 255)),
-	"green":	((40,0,0), (80, 255, 255)),
-	"yellow":	((25,0,0), (32, 255, 255))
-}
+            colour_x, colour_y, colour_h, colour_distance, colour_angle = (
+                colour_blob
+            )
 
+            # Keep the pairing logic from the existing vision code.
+            # The two colour blobs should be close enough to belong to
+            # the same cylindrical marker.
+            if abs(pink_x - colour_x) > pink_h:
+                continue
 
-def segment(current_frame, hsv_frame, colour):
-	"""
-	Mask out everything except the specified colour
-	Connect pixels to form a blob
-	"""
+            if abs(pink_y - colour_y) > pink_h:
+                continue
 
-	(lower, upper) = colours[colour]
+            # Image y increases downwards.
+            if colour_y < pink_y:
+                detected_type = colour + '/pink'
+                distance = colour_distance
+                angle = colour_angle
+            else:
+                detected_type = 'pink/' + colour
+                distance = pink_distance
+                angle = pink_angle
 
-	# Mask out everything except pink pixels
-	mask = cv2.inRange(hsv_frame, lower, upper)
-	result = cv2.bitwise_and(current_frame, current_frame, mask=mask)
+            if detected_type not in MARKER_TYPES:
+                self.get_logger().warning(
+                    f'Unknown marker type: {detected_type}'
+                )
+                continue
 
-	# Run 4-way connected components, with statistics
-	blobs = cv2.connectedComponentsWithStats(mask, 4, cv2.CV_32S)
+            marker_index = MARKER_TYPES.index(detected_type)
 
-	# Display masked image
-#	cv2.imshow("result", result)
- 
-	# Print statistics for each blob (connected component)
-	return get_stats(blobs, colour)
+            marker_x, marker_y = self.polar_to_cartesian(
+                distance,
+                angle
+            )
 
+            marker_at = PointStamped()
+            marker_at.header.stamp = self.get_clock().now().to_msg()
+            marker_at.header.frame_id = 'camera_link'
 
-def get_stats(blobs, colour):
-	"""
-	Print statistics for each blob (connected component)
-	of the specified colour
-	Return the centroid and height of the largest blob, if there is one.
-	"""
+            # Shared /marker_position contract:
+            # x = forward distance in metres
+            # y = lateral position: +left, -right
+            # z = marker type index from MARKER_TYPES
+            #
+            # wall_follower.cpp uses x/y only.
+            # point_transformer.py will read z first, set z=0, then
+            # transform x/y into the map frame.
+            marker_at.point.x = float(marker_x)
+            marker_at.point.y = float(marker_y)
+            marker_at.point.z = float(marker_index)
 
-	(numLabels, labels, stats, centroids) = blobs
-	if numLabels == 0:
-		return None
+            self.point_publisher.publish(marker_at)
 
-	largest = 0
-	rval = None
-	centre = 320 # 640/2
+            self.get_logger().info(
+                f'pink=(h={pink_h} x={pink_x:.0f} y={pink_y:.0f}) '
+                f'other=(h={colour_h} x={colour_x:.0f} y={colour_y:.0f}) '
+                f'distance={distance:.3f}m '
+                f'angle={angle:.1f}deg '
+                f'x={marker_x:.3f} y={marker_y:.3f}'
+                # f'[MARKER] type={detected_type} '
+                # f'index={marker_index} '
+                # f'distance={distance:.3f}m '
+                # f'angle={angle:.1f}deg '
+                # f'x={marker_x:.3f} y={marker_y:.3f}'
+            )
 
-	for i in range(1, numLabels):
-		x = stats[i, cv2.CC_STAT_LEFT]
-		y = stats[i, cv2.CC_STAT_TOP]
-		w = stats[i, cv2.CC_STAT_WIDTH]
-		h = stats[i, cv2.CC_STAT_HEIGHT]
-		area = stats[i, cv2.CC_STAT_AREA]
-		(cx, cy) = centroids[i]
-#		print(colour, x, y, w, h, area, cx, cy)
+            # Process one marker candidate per frame for now.
+            break
 
-		if area > largest:
-			largest = area
-			distance = 35.772 * pow(h, -0.859) # obtained experimentally
-			aspect_ratio = h/w
-			if aspect_ratio < 0.8:
-				if cx < centre:
-					cx += h-w
-				else:
-					cx -= h-w
-			angle = (centre - cx) * field_of_view_h / 640
-			if angle < 0:
-				angle += 360
-			rval = (cx, cy, h, distance, angle)
+        self.show_images(current_frame, combined_result)
 
-	return rval
+    def segment(self, current_frame, hsv_frame, colour):
+        lower, upper = COLOURS[colour]
 
+        lower = np.array(lower, dtype=np.uint8)
+        upper = np.array(upper, dtype=np.uint8)
 
-def polar_to_cartesian(distance, angle):
-	# Convert angle from degrees to radians
-	angle_rad = math.radians(angle)
+        mask = cv2.inRange(
+            hsv_frame,
+            lower,
+            upper
+        )
 
-	# Calculate x and y coordinates
-	x = distance * math.cos(angle_rad)
-	y = distance * math.sin(angle_rad)
+        result = cv2.bitwise_and(
+            current_frame,
+            current_frame,
+            mask=mask
+        )
 
-	return x, y
+        blobs = cv2.connectedComponentsWithStats(
+            mask,
+            4,
+            cv2.CV_32S
+        )
+
+        blob = self.get_stats(
+            blobs,
+            current_frame.shape[1]
+        )
+
+        return result, blob
+
+    def get_stats(self, blobs, image_width):
+        num_labels, _, stats, centroids = blobs
+
+        if num_labels <= 1:
+            return None
+
+        largest_area = 0
+        rval = None
+        centre = image_width / 2.0
+
+        for i in range(1, num_labels):
+            w = stats[i, cv2.CC_STAT_WIDTH]
+            h = stats[i, cv2.CC_STAT_HEIGHT]
+            area = stats[i, cv2.CC_STAT_AREA]
+            cx, cy = centroids[i]
+
+            if h < MIN_HEIGHT:
+                continue
+
+            if area < MIN_AREA:
+                continue
+
+            if area <= largest_area:
+                continue
+
+            largest_area = area
+
+            # Existing experimentally fitted distance model.
+            # We still need to verify the real-world distance accuracy.
+            distance = 30.2114 * pow(h, -0.985)
+
+            # Existing correction for a partially visible marker near
+            # the left or right image edge.
+            aspect_ratio = w / h
+
+            if aspect_ratio < 0.8:
+                if cx < centre:
+                    cx += h - w
+                else:
+                    cx -= h - w
+
+            # Signed bearing:
+            # positive = marker left of camera centre
+            # negative = marker right of camera centre
+            angle = (
+                (centre - cx)
+                * FIELD_OF_VIEW_H
+                / image_width
+            )
+
+            rval = (
+                cx,
+                cy,
+                h,
+                distance,
+                angle
+            )
+
+        return rval
+
+    def polar_to_cartesian(self, distance, angle):
+        angle_rad = math.radians(angle)
+
+        # Matches wall_follower.cpp:
+        # x > 0 = marker in front
+        # y > 0 = marker on left
+        # y < 0 = marker on right
+        x = distance * math.cos(angle_rad)
+        y = distance * math.sin(angle_rad)
+
+        return x, y
+
+    def show_images(self, current_frame, result):
+        cv2.imshow('camera', current_frame)
+        cv2.imshow('result', result)
+        cv2.waitKey(1)
+
+    def destroy_node(self):
+        cv2.destroyAllWindows()
+        super().destroy_node()
 
 
 def main(args=None):
-	
-	# Initialize the rclpy library
-	rclpy.init(args=args)
-	
-	# Create the node
-	see_marker = SeeMarker()
-	
-	# Spin the node so the callback function is called.
-	try:
-		rclpy.spin(see_marker)
-	except KeyboardInterrupt:
-		exit()
+    rclpy.init(args=args)
+    node = SeeMarker()
 
-	# Destroy the node explicitly
-	# (optional - otherwise it will be done automatically
-	# when the garbage collector destroys the node object)
-	see_marker.destroy_node()
-	
-	# Shutdown the ROS client library for Python
-	rclpy.shutdown()
-	
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+
+    node.destroy_node()
+    rclpy.shutdown()
+
+
 if __name__ == '__main__':
-	main()
+    main()
