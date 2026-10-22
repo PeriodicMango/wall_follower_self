@@ -74,15 +74,6 @@ class SeeMarker(Node):
         if len(data.data) == 0:
             return
 
-        # Age of this frame: now minus the capture timestamp stamped by
-        # the camera. If this stays above ~1 s the pipeline is backed up.
-        now_ns = self.get_clock().now().nanoseconds
-        stamp_ns = (
-            data.header.stamp.sec * 1000000000
-            + data.header.stamp.nanosec
-        )
-        age = (now_ns - stamp_ns) / 1e9
-
         try:
             current_frame = self.br.compressed_imgmsg_to_cv2(data)
         except Exception as e:
@@ -181,7 +172,6 @@ class SeeMarker(Node):
             self.point_publisher.publish(marker_at)
 
             self.get_logger().info(
-                f'age={age:.2f}s '
                 f'pink=(h={pink_h} x={pink_x:.0f} y={pink_y:.0f}) '
                 f'other=(h={colour_h} x={colour_x:.0f} y={colour_y:.0f}) '
                 f'distance={distance:.3f}m '
