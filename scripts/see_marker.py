@@ -5,6 +5,7 @@ import numpy as np
 import rclpy
 
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage
 from geometry_msgs.msg import PointStamped
@@ -42,11 +43,21 @@ class SeeMarker(Node):
 
         self.br = CvBridge()
 
+        # Depth 1 + BEST_EFFORT: when this callback cannot keep up with
+        # the camera, stale frames are dropped instead of queued, so the
+        # reading is always the newest frame rather than one several
+        # seconds old.
+        camera_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST
+        )
+
         self.subscription = self.create_subscription(
             CompressedImage,
             '/camera/image_raw/compressed',
             self.listener_callback,
-            10
+            camera_qos
         )
 
         # Both wall_follower.cpp and point_transformer.py will subscribe
@@ -62,6 +73,15 @@ class SeeMarker(Node):
     def listener_callback(self, data):
         if len(data.data) == 0:
             return
+
+        # Age of this frame: now minus the capture timestamp stamped by
+        # the camera. If this stays above ~1 s the pipeline is backed up.
+        now_ns = self.get_clock().now().nanoseconds
+        stamp_ns = (
+            data.header.stamp.sec * 1000000000
+            + data.header.stamp.nanosec
+        )
+        age = (now_ns - stamp_ns) / 1e9
 
         try:
             current_frame = self.br.compressed_imgmsg_to_cv2(data)
@@ -161,6 +181,7 @@ class SeeMarker(Node):
             self.point_publisher.publish(marker_at)
 
             self.get_logger().info(
+                f'age={age:.2f}s '
                 f'pink=(h={pink_h} x={pink_x:.0f} y={pink_y:.0f}) '
                 f'other=(h={colour_h} x={colour_x:.0f} y={colour_y:.0f}) '
                 f'distance={distance:.3f}m '
