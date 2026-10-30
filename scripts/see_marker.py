@@ -88,6 +88,23 @@ MAX_HEIGHT_RATIO = 1.5
 # 是否显示四种单独 mask；正式跑如觉得窗口太多可改 False。
 SHOW_MASK_WINDOWS = True
 
+# ==========================================================
+# 【中文修改标注：真机固定前向偏移补偿】
+# 现场观察：Marker 在 map 中整体向机器人前方偏约 0.70 m。
+# 因此在 SeeMarker 输出 camera_link 坐标前，只对前向 +x 做固定后拉。
+#
+# 为什么只改 x：
+# ROS 坐标中 +x=前方、+y=左侧。
+# 你们观察到的是“整体向前偏”，所以只修正 x，不修改 y。
+#
+# 为什么不直接 distance -= 0.40：
+# 斜视时 distance 沿视线方向，直接减 distance 会同时改变 x 和 y。
+#
+# 现场建议调参：
+# 0.30 / 0.35 / 0.40 / 0.45 m
+# ==========================================================
+FORWARD_OFFSET_CORRECTION = 0.70
+
 
 # ==========================================================
 # 【保留 (3)】点击 camera 窗口读取 HSV
@@ -275,6 +292,18 @@ class SeeMarker(Node):
 
                 marker_index = marker_type.index(detected_type)
                 marker_x, marker_y = self.polar_to_cartesian(distance, angle)
+
+                # ======================================================
+                # 【中文修改标注：固定前向后拉】
+                # 只修正前向 x；横向 y 保持原计算结果。
+                # ======================================================
+                marker_x -= FORWARD_OFFSET_CORRECTION
+
+                print(
+                    f'[固定补偿] x后拉={FORWARD_OFFSET_CORRECTION:.2f} m | '
+                    f'补偿后 camera_xy=({marker_x:.3f}, {marker_y:.3f})',
+                    flush=True
+                )
 
                 marker_at = PointStamped()
                 marker_at.header.stamp = self.get_clock().now().to_msg()
