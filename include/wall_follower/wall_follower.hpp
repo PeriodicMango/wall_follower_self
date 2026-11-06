@@ -17,7 +17,9 @@
 #ifndef WALL_FOLLOWER_HPP_
 #define WALL_FOLLOWER_HPP_
 
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
@@ -54,6 +56,8 @@ public:
 private:
 	// ROS topic publishers
 	rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+	rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr start_pose_pub_;
+	rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr finished_pub_;
 
 	// ROS topic subscribers
 	rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;

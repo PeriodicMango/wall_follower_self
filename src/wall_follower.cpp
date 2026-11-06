@@ -57,6 +57,12 @@ WallFollower::WallFollower()
     cmd_vel_pub_ =
         this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", qos);
 
+    auto latched = rclcpp::QoS(1).reliable().transient_local();
+    start_pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
+        "wall_follower/start_pose", latched);
+    finished_pub_ = this->create_publisher<std_msgs::msg::Bool>(
+        "wall_follower/finished", latched);
+
     scan_sub_ =
         this->create_subscription<sensor_msgs::msg::LaserScan>(
             "scan",
@@ -102,6 +108,8 @@ WallFollower::~WallFollower()
 void WallFollower::odom_callback(
     const nav_msgs::msg::Odometry::SharedPtr msg)
 {
+    if (near_start) return;
+
     static bool first = true;
 
     static bool start_moving = true;
@@ -128,6 +136,11 @@ void WallFollower::odom_callback(
         start_x = current_x;
 
         start_y = current_y;
+
+        geometry_msgs::msg::PoseStamped start_pose;
+        start_pose.header = msg->header;
+        start_pose.pose = msg->pose.pose;
+        start_pose_pub_->publish(start_pose);
 
         first = false;
 
@@ -157,6 +170,9 @@ void WallFollower::odom_callback(
         fprintf(stderr, "[ODOM] Near start!!\n");
 
         near_start = true;
+        std_msgs::msg::Bool finished;
+        finished.data = true;
+        finished_pub_->publish(finished);
 
         first = true;
         start_moving = true;
@@ -289,9 +305,14 @@ void WallFollower::update_callback()
     {
         update_cmd_vel(0.0, 0.0);
 
-        fprintf(stderr, "[STOP] Robot returned near start.\n");
-
-        exit(0);
+        // Leave time for the marker recorder to receive the finish notification.
+        static int stop_cycles = 0;
+        if (++stop_cycles >= 20)
+        {
+            fprintf(stderr, "[STOP] Robot returned near start.\n");
+            exit(0);
+        }
+        return;
     }
 
     int rule = 0;
