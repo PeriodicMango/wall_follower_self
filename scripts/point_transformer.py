@@ -18,6 +18,29 @@ from visualization_msgs.msg import MarkerArray
 from wall_follower.landmark import marker_type, max_markers, Landmark
 
 
+def yaw_of(q):
+    """Yaw of a geometry_msgs Quaternion."""
+    return math.atan2(2 * (q.w * q.z + q.x * q.y),
+                      1 - 2 * (q.y * q.y + q.z * q.z))
+
+
+def compose_2d(transform, pose):
+    """Apply a TransformStamped to a Pose on the ground plane -> (x, y, yaw).
+
+    Done by hand instead of with tf2_geometry_msgs.do_transform_pose, which
+    takes a bare Pose on Humble but a PoseStamped on earlier distros. The
+    robot is planar, so roll and pitch are zero and the 2D composition below
+    is exact.
+    """
+    t = transform.transform.translation
+    t_yaw = yaw_of(transform.transform.rotation)
+    cos_t = math.cos(t_yaw)
+    sin_t = math.sin(t_yaw)
+    x = t.x + cos_t * pose.position.x - sin_t * pose.position.y
+    y = t.y + sin_t * pose.position.x + cos_t * pose.position.y
+    return x, y, t_yaw + yaw_of(pose.orientation)
+
+
 class PointTransformer(Node):
     def __init__(self):
         super().__init__('point_transformer')
@@ -52,9 +75,14 @@ class PointTransformer(Node):
         try:
             transform = self.tf_buffer.lookup_transform(
                 'map', self.start_odom.header.frame_id, rclpy.time.Time())
-            self.start_map = tf2_geometry_msgs.do_transform_pose(self.start_odom, transform)
         except tf2_ros.TransformException:
-            pass  # SLAM may not have published map -> odom yet.
+            return  # SLAM may not have published map -> odom yet.
+        try:
+            self.start_map = compose_2d(transform, self.start_odom.pose)
+        except Exception as exc:
+            # This runs in a timer callback; an escaping exception would kill
+            # the recorder and lose the whole run, marker file included.
+            self.get_logger().warn(f'Could not place the start pose in map: {exc}')
 
     def point_callback(self, msg):
         which_marker = int(msg.point.z)
@@ -85,29 +113,34 @@ class PointTransformer(Node):
 
         if self.start_odom is None:
             raise RuntimeError('No wall_follower/start_pose received; cannot write marker file')
+
+        # The assignment's marker file is written first and unconditionally:
+        # nothing optional below may be able to stop it from reaching disk.
         pose = self.start_odom.pose
-        q = pose.orientation
-        yaw = math.atan2(2 * (q.w * q.z + q.x * q.y),
-                         1 - 2 * (q.y * q.y + q.z * q.z))
         found = [lm for lm in self.marker_position if lm.top_marker is not None]
-        if self.start_map is None:
-            raise RuntimeError('No map -> odom transform; map start pose was not recorded')
         with self.marker_file.open('w', newline='') as stream:
             writer = csv.writer(stream)
-            writer.writerow([pose.position.x, pose.position.y, yaw])
+            writer.writerow([pose.position.x, pose.position.y, yaw_of(pose.orientation)])
             for lm in found:
                 p = lm.top_marker.pose.position
                 writer.writerow([p.x, p.y, marker_type[lm.mtype]])
-        q = self.start_map.pose.orientation
-        map_yaw = math.atan2(2 * (q.w * q.z + q.x * q.y),
-                             1 - 2 * (q.y * q.y + q.z * q.z))
-        sidecar = self.marker_file.with_suffix('.start_map.txt')
-        with sidecar.open('w', newline='') as stream:
-            csv.writer(stream).writerow([self.start_map.pose.position.x,
-                                         self.start_map.pose.position.y, map_yaw])
-        self.get_logger().info(f'Saved {len(found)} markers to {self.marker_file} and start pose to {sidecar}')
+        self.get_logger().info(f'Saved {len(found)} markers to {self.marker_file}')
         if len(found) != 4:
-            self.get_logger().warn(f'Expected 4 markers, found {len(found)}; navigation will reject this run')
+            self.get_logger().warn(f'Expected 4 markers, found {len(found)}')
+
+        # The map-frame start pose is an extra, not part of the required format.
+        # navigate_markers falls back to the odom start row when it is absent,
+        # so a sidecar left over from an earlier run must not survive this one.
+        sidecar = self.marker_file.with_suffix('.start_map.txt')
+        if self.start_map is None:
+            sidecar.unlink(missing_ok=True)
+            self.get_logger().warn(
+                'No map -> odom transform; wrote no map-frame start pose. '
+                'Navigation will read the odom start row as a map pose.')
+            return
+        with sidecar.open('w', newline='') as stream:
+            csv.writer(stream).writerow(self.start_map)
+        self.get_logger().info(f'Saved the map-frame start pose to {sidecar}')
 
 
 def main(args=None):
