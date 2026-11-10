@@ -42,7 +42,7 @@ from wall_follower.landmark import marker_type
 # True  = teammate's compressed stream (recommended on robot Wi-Fi)
 # False = RAW /camera/image_raw fallback
 # ==========================================================
-USE_COMPRESSED = True
+USE_COMPRESSED = False
 
 RAW_TOPIC = '/camera/image_raw'
 COMPRESSED_TOPIC = '/camera/image_raw/compressed'
@@ -60,7 +60,7 @@ COLOURS = {
     # 实测：H=101, S=245, V=183
     'blue': (
         (95, 140, 80),
-        (110, 255, 255)
+        (130, 255, 255)
     ),
 
     # 当前 (3) 中的值；有真实 Green 数据后可继续收紧
@@ -103,7 +103,7 @@ SHOW_MASK_WINDOWS = True
 # 现场建议调参：
 # 0.30 / 0.35 / 0.40 / 0.45 m
 # ==========================================================
-FORWARD_OFFSET_CORRECTION = 0.70
+FORWARD_OFFSET_CORRECTION = 0.0
 
 
 # ==========================================================
@@ -187,6 +187,9 @@ class SeeMarker(Node):
             '/marker_position',
             10
         )
+
+        # closest observation so far, per marker index
+        self.best_distance = {}
 
         print(
             f'[HSV DEBUG] see_marker started. Waiting for {waiting_topic} ...',
@@ -305,8 +308,13 @@ class SeeMarker(Node):
                     flush=True
                 )
 
+                best = self.best_distance.get(marker_index)
+                if best is not None and distance >= best:
+                    break
+                self.best_distance[marker_index] = distance
+
                 marker_at = PointStamped()
-                marker_at.header.stamp = self.get_clock().now().to_msg()
+                marker_at.header.stamp = data.header.stamp
                 marker_at.header.frame_id = 'camera_link'
                 marker_at.point.x = float(marker_x)
                 marker_at.point.y = float(marker_y)

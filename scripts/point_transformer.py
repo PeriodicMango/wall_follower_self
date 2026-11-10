@@ -89,18 +89,29 @@ class PointTransformer(Node):
         if which_marker < 0 or which_marker >= max_markers:
             self.get_logger().warn(f'Invalid marker index: {msg.point.z}')
             return
+        stamp = rclpy.time.Time.from_msg(msg.header.stamp)
         try:
-            transform = self.tf_buffer.lookup_transform('map', msg.header.frame_id, rclpy.time.Time())
-        except tf2_ros.TransformException as exc:
-            self.get_logger().warn(f'Marker transform unavailable: {exc}')
-            return
+            transform = self.tf_buffer.lookup_transform('map', msg.header.frame_id, stamp)
+        except tf2_ros.TransformException:
+            try:
+                transform = self.tf_buffer.lookup_transform('map', msg.header.frame_id, rclpy.time.Time())
+            except tf2_ros.TransformException as exc:
+                self.get_logger().warn(f'Marker transform unavailable: {exc}')
+                return
         # point.z encodes the type index, not a camera-space height.
         point = PointStamped()
         point.header = msg.header
         point.point.x = msg.point.x
         point.point.y = msg.point.y
         map_point = tf2_geometry_msgs.do_transform_point(point, transform)
-        self.marker_position[which_marker].update_position(map_point.point)
+        landmark = self.marker_position[which_marker]
+        landmark.update_position(map_point.point)
+        # newest reading is always the closest one; overwrite the running mean
+        # landmark.py keeps, which weights by frame count rather than accuracy
+        landmark.top_marker.pose.position.x = map_point.point.x
+        landmark.top_marker.pose.position.y = map_point.point.y
+        landmark.bottom_marker.pose.position.x = map_point.point.x
+        landmark.bottom_marker.pose.position.y = map_point.point.y
         self.marker_publisher_.publish(self.marker_array)
 
     def save_landmarks(self):
