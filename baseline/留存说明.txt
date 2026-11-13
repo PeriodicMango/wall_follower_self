@@ -1,0 +1,16 @@
+2026-11-11 保底版 · .103 真机手动考核
+封存对象是 16:59:16 启动、17:03:14 完成的真机运行。手动定位并点击 RViz 发车，黄/粉、蓝/粉、粉/绿全部成功，最后回到原建图地图位姿，树莓派回执为零速度。
+档案中保留了当时的脚本、Nav2/RViz 配置、地图、原点、CSV 快照与完整本轮导航日志。这个保底版的运行入口是「手动考核」。
+
+在原 Mac 上复用
+把 ZIP 解压到单独的空文件夹，保留三个 TurtleBot 目录的相对位置。原机课程环境仍须位于 ~/COMP3431/mac-native-gazebo-11.10.2，真机 DDS 配置仍须存在于原工作区的 TurtleBot-Test-2026-11-06/restart-robot103/cyclonedds-mac.xml（env.sh 写有这个绝对路径）。如果恢复到原工作区，请先关闭其它建图或导航终端，再保留当前文件的副本，按包内的相对目录恢复需要的文件。
+在解压后包含三个 TurtleBot 目录的文件夹打开一个终端：
+R="$(pwd -P)/TurtleBot-Real-2026-11-11"
+RUN="$R/runs/Real_103_2026-11-11_152732"
+"$R/真机四标导航.command" 预览考核 "$RUN"
+"$R/真机四标导航.command" 手动考核 "$RUN"
+在 RViz 用 2D Pose Estimate 标实际位置和车头，等终端显示可以发车后，用 2D Goal Pose 拖一次箭头。按运行命令终端的回车可停车。
+本轮成功路线的原样 CSV 和结果位于上述 RUN/导航_Real_2026-11-11_165916/teacher-order.csv 和 navigation-result.json。
+
+依赖原 Mac 的课程 Pixi/ROS 2 Humble 和 RViz，以及 .103 的 /opt/ros/humble、/home/pi/turtlebot3_ws/install、已有 /home/pi/turtlebot_test_runs/robot103_2026-11-11_143310 会话和 robot103_20261106 的 DDS XML。归档内含使用的本机 DDS 文件、队友源码/overlay install 和 Pi 端程序的本机源码，未打包系统安装或远程凭据。
+校验和：SHA256.json 记录归档各文件内容。课程环境指纹列于 课程环境指纹.json。

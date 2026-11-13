@@ -1,0 +1,15 @@
+{
+  "outcome": "exam_completed_and_home",
+  "reached": [
+    "Marker 1/3 (yellow/pink) SUCCEEDED, latest Nav2 map pose to recorded marker 0.46 m",
+    "Marker 2/3 (blue/pink) SUCCEEDED, latest Nav2 map pose to recorded marker 0.48 m",
+    "Marker 3/3 (pink/green) SUCCEEDED, latest Nav2 map pose to recorded marker 0.48 m"
+  ],
+  "stop_ack": "zero_command_confirmed",
+  "trigger": "rviz_goal_click",
+  "order_source": "/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/maps/landmarks.csv",
+  "order_snapshot": "teacher-order.csv",
+  "home_reached": true,
+  "pi_reply": "{\"guard_schema_version\": 2, \"mode\": \"disarmed\", \"forward_limit_m_s\": 0.06, \"navigation_forward_limit_m_s\": 0.13, \"state\": \"holding_zero\", \"reasons\": [\"ARM removed; new token required\", \"command: stale\"], \"counts\": {\"scan\": 4180, \"odom\": 16740, \"command\": 3009}, \"rejected\": {\"scan\": 0, \"odom\": 0, \"command\": 0}, \"age_seconds\": {\"scan\": 0.092, \"odom\": 0.021, \"command\": 6.558}, \"minimum_valid_range_m\": 0.12200000137090683, \"remaining_seconds\": 0.0, \"output\": {\"linear_x\": 0.0, \"angular_z\": 0.0}, \"updated_at_unix\": 1794376992.0176764}",
+  "finished_local": "2026-11-11T17:03:14"
+}

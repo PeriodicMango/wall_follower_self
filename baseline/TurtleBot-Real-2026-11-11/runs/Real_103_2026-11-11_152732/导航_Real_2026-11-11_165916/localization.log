@@ -1,0 +1,5 @@
+保持机器人静止。在 RViz 选 2D Pose Estimate，在地图上的实际车身位置按下鼠标，朝真实车头方向拖出箭头并松开。核对红色激光点与墙体是否重合。
+等待 RViz 里的 2D Pose Estimate。
+已收到 RViz 位姿，等待 AMCL 与激光定位结果。
+等待与静止里程计同一时刻、且与 AMCL 一致的 map → base_footprint。
+已保存人工指定、经 AMCL 确认的静止位姿：/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/导航_Real_2026-11-11_165916/measured_pose.json

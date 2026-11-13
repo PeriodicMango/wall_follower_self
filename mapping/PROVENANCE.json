@@ -1,0 +1,25 @@
+{
+  "project": "TurtleBot_WallFollower_2.3_Real_2026-11-11",
+  "controller": {
+    "original": "reference/wall_follower 2.3.cpp",
+    "original_sha256": "31ce5e8ca22779e8d0de5275e35dbe67829072af156f1a6d21c2b4195747d814",
+    "portable_source": "local_variants/wall_follower_2_3"
+  },
+  "vision_upstream": {
+    "repository": "https://github.com/PeriodicMango/wall_follower_self",
+    "revision": "aa52fb5294769d0cfefede48f022e21ec98b90ff",
+    "directory": "upstream"
+  },
+  "example": {
+    "directory": "sample/Real_103_2026-11-11_152732",
+    "source_run": "Real_103_2026-11-11_152732",
+    "controller_used": "wall_follower_3",
+    "controller_parameters": "sample/Real_103_2026-11-11_152732/wall_follower_3.used.yaml",
+    "recorded_landmarks_in_file_order": [
+      "yellow/pink",
+      "blue/pink",
+      "pink/green"
+    ],
+    "note": "Historical physical mapping sample. This run used the earlier wall_follower_3 controller."
+  }
+}

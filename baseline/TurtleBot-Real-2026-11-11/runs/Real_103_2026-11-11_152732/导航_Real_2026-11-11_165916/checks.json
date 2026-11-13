@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "errors": [],
+  "state": {
+    "map_server": "active",
+    "amcl": "active",
+    "controller_server": "active",
+    "planner_server": "active",
+    "bt_navigator": "active",
+    "velocity_smoother": "active",
+    "behavior_server": "active",
+    "smoother_server": "active",
+    "waypoint_follower": "active",
+    "yaml_filename": "/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/maps/maze_Real_103_2026-11-11_152732.yaml"
+  },
+  "graph": {
+    "/map": [
+      "/map_server"
+    ],
+    "/scan": [
+      "/hlds_laser_publisher"
+    ],
+    "/odom": [
+      "/diff_drive_controller"
+    ],
+    "/cmd_vel": [
+      "/turtlebot_test_velocity_guard"
+    ],
+    "/turtlebot_test/wall_cmd_vel": [
+      "/velocity_smoother"
+    ],
+    "/turtlebot_test/nav_cmd_vel": [
+      "/behavior_server",
+      "/behavior_server",
+      "/behavior_server",
+      "/behavior_server",
+      "/behavior_server",
+      "/controller_server"
+    ]
+  },
+  "odom_gid": "01109b43c73dd5f0f103ff4200003d030000000000000000",
+  "handoff": "/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/\u5bfc\u822a_Real_2026-11-11_165916/measured_pose.json",
+  "endpoint_delta_xy_m_yaw_rad": [
+    5.062137272155251e-05,
+    2.276897430419922e-05
+  ],
+  "scan_min_m": 0.3179999887943268,
+  "updated_unix": 1794376788.4859362,
+  "continuity": "endpoint comparison only"
+}

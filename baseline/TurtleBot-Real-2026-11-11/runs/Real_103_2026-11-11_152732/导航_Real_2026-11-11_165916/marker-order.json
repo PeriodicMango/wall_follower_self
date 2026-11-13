@@ -1,0 +1,35 @@
+{
+  "marker_file": "/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/maps/markers_Real_103_2026-11-11_152732.txt",
+  "shuffle": false,
+  "seed": null,
+  "approach_distance_m": 0.4,
+  "order": [
+    {
+      "index": 1,
+      "kind": "yellow/pink",
+      "x": 1.703931269593891,
+      "y": -0.10132777671410642
+    },
+    {
+      "index": 2,
+      "kind": "blue/pink",
+      "x": 1.496745916374404,
+      "y": -1.7573992769792888
+    },
+    {
+      "index": 3,
+      "kind": "pink/green",
+      "x": 0.6420697744468008,
+      "y": -1.813420369916942
+    }
+  ],
+  "order_csv": "/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/导航_Real_2026-11-11_165916/teacher-order.csv",
+  "return_to_start": true,
+  "home_map_pose": [
+    -1.8394363846752776e-05,
+    -3.9395625303639825e-10,
+    -3.786684985884747e-05
+  ],
+  "home_file": "/Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/maps/markers_Real_103_2026-11-11_152732.start_map.txt",
+  "start_position_tolerance_m": null
+}

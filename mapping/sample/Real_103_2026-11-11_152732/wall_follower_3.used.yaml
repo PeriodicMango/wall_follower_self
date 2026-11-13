@@ -1,0 +1,36 @@
+# 真机巡墙 · wall_follower_3
+# 保存后重新启动巡墙命令生效。数值保留小数点（例如 1.0）。
+wall_follower_node:
+  ros__parameters:
+    # 前方雷达低于此距离就原地右转。调大，会更早转弯。单位：米。
+    front_block_dist: 0.50
+
+    # 左前侧（车头向左约 60°）超过此距离时，向左转入开口。单位：米。
+    left_open_dist: 0.60
+
+    # SeeMarker 给出的目标在前方，且平面距离低于此值时，原地转向远离它。
+    # 单位：米。距离是视觉节点发布的估计值，和雷达读数可能不同。
+    marker_avoid_distance_m: 0.70
+    # 避开标记时请求的转速大小。左侧/正前方标记使车右转，右侧标记使车左转。
+    marker_turn_speed_rad_s: 0.40
+    # 最后一次收到标记后继续采信该检测的时间。单位：秒。
+    marker_timeout_s: 2.0
+
+    # 雷达方向以车头为 0°，向左为正。每条规则取该方向附近约 ±15° 的最近读数。
+    # 左前（+30°）或右前（−30°）低于对应距离时，边前进边向另一侧修正。
+    front_left_close_dist: 0.50
+    front_right_close_dist: 0.50
+    # 左前侧（+60°）太近时向右修正；稍远时向左微调。单位均为米。
+    # 保持 left_front_close_dist < left_too_far_dist < left_open_dist。
+    left_front_close_dist: 0.30
+    left_too_far_dist: 0.50
+
+    # 控制器请求速度（米/秒、弧度/秒）。.103 上的速度保护会把底盘实际指令限制为
+    # 线速度绝对值不超过 0.06 米/秒、角速度绝对值不超过 0.30 弧度/秒。
+    # 请求值已经超过上限时，继续调大不会加快车轮。
+    linear_speed_m_s: 0.15             # 正常直行或常规修正方向时
+    turn_linear_speed_m_s: 0.10        # 左前侧太近或进入左侧开口时
+    turn_speed_rad_s: 0.60             # 进入左侧开口时的左转速度
+    front_block_turn_speed_rad_s: 1.0  # 前方受阻时原地右转（原程序默认 0.60 + 0.40）
+    correction_turn_speed_rad_s: 0.40  # 左侧或右前方过近时修正方向
+    gentle_turn_speed_rad_s: 0.30      # 稍微远离左墙时向左微调

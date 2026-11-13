@@ -1,0 +1,17 @@
+1794376760.7409542 [INFO] [launch]: All log files can be found below /Users/xiaoluming/Documents/ChatGPT/Robotcup@home_Nav/TurtleBot-Real-2026-11-11/runs/Real_103_2026-11-11_152732/导航_Real_2026-11-11_165916/2026-11-11-16-59-20-740391-Mac.localdomain-87249
+1794376760.7410681 [INFO] [launch]: Default logging verbosity is set to INFO
+1794376760.8543160 [INFO] [component_container_mt-1]: process started with pid [87260]
+1794376761.4363031 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/map_server' in container '/robot103_nav2_container'
+1794376761.4670279 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/amcl' in container '/robot103_nav2_container'
+1794376761.5260811 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/controller_server' in container '/robot103_nav2_container'
+1794376761.5819771 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/smoother_server' in container '/robot103_nav2_container'
+1794376761.6201479 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/planner_server' in container '/robot103_nav2_container'
+1794376761.6534231 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/behavior_server' in container '/robot103_nav2_container'
+1794376761.6654332 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/bt_navigator' in container '/robot103_nav2_container'
+1794376761.6848691 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/waypoint_follower' in container '/robot103_nav2_container'
+1794376761.7034361 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/velocity_smoother' in container '/robot103_nav2_container'
+1794376761.7222021 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/lifecycle_manager_localization' in container '/robot103_nav2_container'
+1794376761.7316711 [INFO] [launch_ros.actions.load_composable_nodes]: Loaded node '/lifecycle_manager_navigation' in container '/robot103_nav2_container'
+1794376985.7340901 [WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+1794376986.8039050 [INFO] [component_container_mt-1]: sending signal 'SIGINT' to process[component_container_mt-1]
+1794376987.1409690 [ERROR] [component_container_mt-1]: process has died [pid 87260, exit code -11, cmd '/Users/xiaoluming/COMP3431/mac-native-gazebo-11.10.2/.pixi/envs/default/lib/rclcpp_components/component_container_mt --ros-args -r __node:=robot103_nav2_container -r __ns:=/ --params-file /var/folders/jp/kh6qbmg54n5f7pq5stmz5_cc0000gn/T/tmpeumbmza3'].
